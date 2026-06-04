@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#0B111E]">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEG-4 Cooling Tower Make-Up Level Simulator</title>
+    <!-- Tailwind CSS for high-tech industrial UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons for SCADA style elements -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts - Inter for premium readability -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <!-- Custom industrial cyber-tech styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono-font {
+            font-family: 'Share Tech Mono', monospace;
+        }
+        /* Custom scrollbar for SCADA panels */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121824;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1A2333;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00B0FF;
+        }
+        /* Glow animations */
+        .neon-glow-green {
+            box-shadow: 0 0 25px rgba(0, 230, 118, 0.6);
+        }
+        .neon-glow-cyan {
+            box-shadow: 0 0 25px rgba(0, 176, 255, 0.6);
+        }
+        .neon-glow-red {
+            box-shadow: 0 0 25px rgba(255, 23, 68, 0.7);
+        }
+        /* CSS keyframe animations for pipeline flows */
+        @keyframes flow {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+        .flow-active {
+            stroke-dasharray: 6, 4;
+            animation: flow 1s linear infinite;
+        }
+        /* Evaporation vapor rising animation */
+        @keyframes vapor {
+            0% {
+                transform: translateY(0) scaleX(1);
+                opacity: 0;
+            }
+            15% {
+                opacity: 0.5;
+            }
+            50% {
+                transform: translateY(-25px) scaleX(1.2);
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateY(-50px) scaleX(1.5);
+                opacity: 0;
+            }
+        }
+        .vapor-cloud {
+            animation: vapor 3s ease-in-out infinite;
+        }
+        .vapor-delay-1 { animation-delay: 0.7s; }
+        .vapor-delay-2 { animation-delay: 1.4s; }
+        .vapor-delay-3 { animation-delay: 2.1s; }
+
+        /* Dynamic Running Neon Border Styles */
+        @keyframes rotate-neon {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .neon-card-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            padding: 3px; /* Width of neon border line */
+            background: #121824;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            min-height: 140px;
+        }
+        .neon-card-bg {
+            position: absolute;
+            top: -150%;
+            left: -150%;
+            width: 400%;
+            height: 400%;
+            animation: rotate-neon 4s linear infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+        /* Smooth color options for running neon light depending on state */
+        .neon-card-bg-stable {
+            background: conic-gradient(from 0deg, transparent 40%, #00E676 50%, transparent 60%, #00E676 90%, transparent 100%);
+            filter: blur(4px) drop-shadow(0 0 12px rgba(0, 230, 118, 0.9));
+        }
+        .neon-card-bg-rising {
+            background: conic-gradient(from 0deg, transparent 40%, #00B0FF 50%, transparent 60%, #00B0FF 90%, transparent 100%);
+            filter: blur(4px) drop-shadow(0 0 12px rgba(0, 176, 255, 0.9));
+        }
+        .neon-card-bg-falling {
+            background: conic-gradient(from 0deg, transparent 40%, #FF1744 50%, transparent 60%, #FF1744 90%, transparent 100%);
+            filter: blur(4px) drop-shadow(0 0 12px rgba(255, 23, 68, 0.9));
+        }
+        .neon-card-content {
+            position: relative;
+            background: #1A2333;
+            border-radius: calc(0.75rem - 3px);
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body class="h-full overflow-x-hidden text-gray-100 flex flex-col justify-between">
+
+    <!-- TOP BAR / HEADER -->
+    <header class="bg-[#121824] border-b border-[#1D283A] px-6 py-3 flex flex-wrap items-center justify-between gap-4 z-10">
+        <div class="flex items-center space-x-4">
+            <div class="p-2 bg-[#1A2333] rounded-lg border border-[#00B0FF]/20 flex items-center justify-center">
+                <i class="fa-solid fa-industry text-2xl text-[#00B0FF] animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-wider text-white flex items-center gap-2">
+                    GEG-4 COOLING TOWER MAKE-UP SIMULATOR
+                    <span class="text-xs font-normal px-2 py-0.5 bg-[#1A2333] border border-[#1d2d44] text-[#8C9BAE] rounded">v2.4 Live</span>
+                </h1>
+                <p class="text-xs text-[#8C9BAE] tracking-tight">Cold Water Basin Dynamic Balance Control &bull; J-1223 A/B (Surface Area: 47.39 m²)</p>
+            </div>
+        </div>
+
+        <!-- SIMULATION CONTROLS & STATUS -->
+        <div class="flex items-center flex-wrap gap-3">
+            <!-- Preset Scenarios Dropdown -->
+            <div class="flex items-center space-x-2 bg-[#1A2333] px-3 py-1.5 rounded-lg border border-[#233149]">
+                <span class="text-xs font-semibold text-[#8C9BAE]"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Preset:</span>
+                <select id="presetSelect" class="bg-[#121824] text-xs text-white border-none rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#00B0FF]" onchange="applyPreset(this.value)">
+                    <option value="steady">Steady State (Normal Operating)</option>
+                    <option value="highPressure">High Header Pressure & Bypass Ops</option>
+                    <option value="criticalLow">High Blowdown / Cavitation Danger</option>
+                    <option value="floatTest">Float Mechanical Shutoff Test</option>
+                    <option value="hotSummer">Hot Summer Peak (Evap Loss Increase)</option>
+                    <optgroup label="Actual Test Records (image_22a846.png)" class="bg-[#121824] text-slate-400">
+                        <option value="method1">Method 1 (LVL: 93.26%, BD: 3.0)</option>
+                        <option value="method2">Method 2 (LVL: 91.32%, BD: 4.0)</option>
+                        <option value="method3">Method 3 (LVL: 89.54%, BD: 4.0)</option>
+                        <option value="method4">Method 4 (LVL: 88.01%, BD: 4.0)</option>
+                        <option value="method5">Method 5 (LVL: 87.50%, BD: 4.0)</option>
+                        <option value="method6">Method 6 (LVL: 86.59%, BD: 4.0)</option>
+                        <option value="method7">Method 7 (LVL: 85.74%, BD: 3.0)</option>
+                        <option value="method8">Method 8 (LVL: 85.50%, BD: 1.8)</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Simulation Speed Toggle -->
+            <div class="flex items-center bg-[#1A2333] rounded-lg border border-[#233149] overflow-hidden">
+                <button onclick="setSimSpeed(1)" id="speedBtn1" class="px-3 py-1.5 text-xs font-bold transition-all bg-[#00B0FF] text-slate-900">1x</button>
+                <button onclick="setSimSpeed(5)" id="speedBtn5" class="px-3 py-1.5 text-xs font-bold text-[#8C9BAE] hover:text-white transition-all">5x</button>
+                <button onclick="setSimSpeed(10)" id="speedBtn10" class="px-3 py-1.5 text-xs font-bold text-[#8C9BAE] hover:text-white transition-all">10x</button>
+            </div>
+
+            <!-- Status Indicator -->
+            <div class="flex items-center space-x-2 bg-[#121824] px-4 py-2 rounded-lg border border-[#00E676]/30 neon-glow-green" id="statusBadge">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#00E676] animate-ping"></span>
+                <span class="text-xs font-black tracking-widest text-[#00E676] mono-font">[ LIVE SIMULATION ]</span>
+            </div>
+
+            <!-- Sound Alarm toggle -->
+            <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-2 rounded-lg bg-[#1A2333] border border-[#233149] hover:bg-[#233149] text-gray-400 hover:text-white flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-volume-xmark" id="soundIcon"></i>
+                <span class="text-xs font-semibold">Alarm Audio</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN SCADA WORKSPACE GRID -->
+    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1920px] w-full mx-auto">
+
+        <!-- ZONE 1: OPERATOR INPUTS & VARIABLES (LEFT PANEL) -->
+        <section class="lg:col-span-3 flex flex-col space-y-4">
+            <div class="bg-[#121824] border border-[#1D283A] rounded-xl p-4 flex flex-col h-full justify-between">
+                <div>
+                    <div class="flex items-center justify-between border-b border-[#1D283A] pb-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="p-1 bg-[#1A2333] border border-[#1D283A] rounded text-[#00B0FF]"><i class="fa-solid fa-sliders text-sm"></i></span>
+                            <h2 class="text-sm font-bold tracking-wider text-white">📥 PROCESS VARIABLES</h2>
+                        </div>
+                        <span class="text-[10px] text-[#8C9BAE] font-mono">ZONE 1</span>
+                    </div>
+
+                    <!-- CONTROL 1: BV. MAIN IW 2" -->
+                    <div class="bg-[#1A2333]/50 p-3 rounded-lg border border-[#1D283A] mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-bold text-white tracking-wide">BV. Main IW 2" (% Opening)</label>
+                            <span class="text-xs font-mono font-bold text-[#00E676]" id="mainValveVal">65%</span>
+                        </div>
+                        <p class="text-[10px] text-[#8C9BAE] mb-2 leading-relaxed">
+                            Mechanical Floating Valve Line. Auto-throttles/shuts as level approaches 90% (225 mm).
+                        </p>
+                        <input type="range" id="mainValveSlider" min="0" max="100" value="65" class="w-full accent-[#00E676] bg-[#121824] h-2 rounded-lg cursor-pointer" oninput="updateMainValve(this.value)">
+                        <div class="flex justify-between text-[9px] text-gray-500 font-mono mt-1">
+                            <span>0% (Closed)</span>
+                            <span id="floatStatusText" class="text-yellow-500 font-semibold">Mechanical Active</span>
+                            <span>100% (Full)</span>
+                        </div>
+                    </div>
+
+                    <!-- CONTROL 2: BV. BYPASS MAIN IW 2" -->
+                    <div class="bg-[#1A2333]/50 p-3 rounded-lg border border-[#1D283A] mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-bold text-white tracking-wide">BV. Bypass Main IW 2" (% Opening)</label>
+                            <span class="text-xs font-mono font-bold text-[#00B0FF]" id="bypassValveVal">0%</span>
+                        </div>
+                        <p class="text-[10px] text-[#8C9BAE] mb-2 leading-relaxed">
+                            Manual Overdrive Line. Normally Closed (NC) bypass pipeline for emergency makeup.
+                        </p>
+                        <input type="range" id="bypassValveSlider" min="0" max="100" value="0" class="w-full accent-[#00B0FF] bg-[#121824] h-2 rounded-lg cursor-pointer" oninput="updateBypassValve(this.value)">
+                        <div class="flex justify-between text-[9px] text-gray-500 font-mono mt-1">
+                            <span>0% (NC)</span>
+                            <span>Manual Overdrive</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <!-- CONTROL 3: PRESSURE IW PIPACK -->
+                    <div class="bg-[#1A2333]/50 p-3 rounded-lg border border-[#1D283A] mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-bold text-white tracking-wide">Pressure IW Pipack (Barg)</label>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-xs font-mono font-bold text-yellow-400" id="pressureVal">6.4</span>
+                                <span class="text-[10px] text-[#8C9BAE]">Barg</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-[#8C9BAE] mb-2 leading-relaxed">
+                            Inlet water header pipeline pressure. Governs maximum inflow rates dynamically.
+                        </p>
+                        <input type="range" id="pressureSlider" min="0.0" max="10.0" step="0.1" value="6.4" class="w-full accent-yellow-400 bg-[#121824] h-2 rounded-lg cursor-pointer" oninput="updatePressure(this.value)">
+                        <div class="flex justify-between text-[9px] text-gray-500 font-mono mt-1">
+                            <span>0.0 Barg</span>
+                            <span>Nominal: ~6.4 Barg</span>
+                            <span>10.0 Barg</span>
+                        </div>
+                    </div>
+
+                    <!-- CONTROL 4: FLOW BLOWDOWN -->
+                    <div class="bg-[#1A2333]/50 p-3 rounded-lg border border-[#1D283A] mb-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-bold text-white tracking-wide">Flow Blowdown (m³/h)</label>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-xs font-mono font-bold text-[#FF1744]" id="blowdownVal">3.5</span>
+                                <span class="text-[10px] text-[#8C9BAE]">m³/h</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-[#8C9BAE] mb-2 leading-relaxed">
+                            Continuous drain rate for cooling tower water treatment and scale control.
+                        </p>
+                        <input type="range" id="blowdownSlider" min="0.0" max="10.0" step="0.1" value="3.5" class="w-full accent-[#FF1744] bg-[#121824] h-2 rounded-lg cursor-pointer" oninput="updateBlowdown(this.value)">
+                        <div class="flex justify-between text-[9px] text-gray-500 font-mono mt-1">
+                            <span>0.0 m³/h</span>
+                            <span>Continuous Blowdown</span>
+                            <span>10.0 m³/h</span>
+                        </div>
+                    </div>
+
+                    <!-- CONTROL 5: AMBIENT TEMPERATURE -->
+                    <div class="bg-[#1A2333]/50 p-3 rounded-lg border border-[#1D283A] mb-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-bold text-white tracking-wide">Ambient Temperature (°C)</label>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-xs font-mono font-bold text-amber-500" id="tempVal">33.0</span>
+                                <span class="text-[10px] text-[#8C9BAE]">°C</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-[#8C9BAE] mb-2 leading-relaxed">
+                            Surrounding air temperature. Governs Evaporation & Drift Loss rates.
+                        </p>
+                        <input type="range" id="tempSlider" min="25.0" max="45.0" step="0.1" value="33.0" class="w-full accent-amber-500 bg-[#121824] h-2 rounded-lg cursor-pointer" oninput="updateTemp(this.value)">
+                        <div class="flex justify-between text-[9px] text-gray-500 font-mono mt-1">
+                            <span>25.0 °C</span>
+                            <span>Norm: 33.0 °C</span>
+                            <span>45.0 °C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Quick Tools -->
+                <div class="pt-4 border-t border-[#1D283A] mt-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="triggerRainDisturbance()" class="px-2 py-1.5 bg-[#1C2C42] border border-[#2B415C] rounded text-xs font-bold hover:bg-[#253C5B] transition flex items-center justify-center gap-1 text-sky-400">
+                            <i class="fa-solid fa-cloud-showers-heavy"></i> Rain Surge (+5 m³/h)
+                        </button>
+                        <button onclick="resetSimulation()" class="px-2 py-1.5 bg-[#1A2333] border border-red-500/20 text-red-400 hover:text-white rounded text-xs font-bold hover:bg-red-950/30 transition flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reset Sim
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ZONE 2: PROCESS DYNAMIC GRAPHIC (CENTER PANEL) -->
+        <section class="lg:col-span-5 flex flex-col space-y-4">
+            <div class="bg-[#121824] border border-[#1D283A] rounded-xl p-4 flex flex-col h-full justify-between">
+                <div>
+                    <div class="flex items-center justify-between border-b border-[#1D283A] pb-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="p-1 bg-[#1A2333] border border-[#1D283A] rounded text-[#00E676]"><i class="fa-solid fa-diagram-project text-sm"></i></span>
+                            <h2 class="text-sm font-bold tracking-wider text-white">⚙️ PROCESS DYNAMIC GRAPHIC</h2>
+                        </div>
+                        <span class="text-[10px] text-[#8C9BAE] font-mono">ZONE 2</span>
+                    </div>
+
+                    <!-- P&ID / INTERACTIVE SVG GRAPHIC CONTAINER -->
+                    <div class="relative w-full aspect-[4/3] bg-[#0E1522] rounded-xl border border-[#1D283A] overflow-hidden flex items-center justify-center p-2">
+                        
+                        <!-- Real-time Warning Flashers -->
+                        <div id="alarmFlashOverlay" class="absolute inset-0 pointer-events-none transition-colors duration-300 z-10"></div>
+                        
+                        <!-- Interactive SVG P&ID -->
+                        <svg id="pidSvg" viewBox="0 0 500 375" class="w-full h-full">
+                            <!-- Background Grids for high-tech look -->
+                            <defs>
+                                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#172234" stroke-width="0.5"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#grid)" />
+
+                            <!-- PIPING LINES -->
+                            <!-- Main IW Line (N3) - Inlet water -->
+                            <path d="M 30,55 L 140,55 L 140,110 L 170,110" fill="none" stroke="#25354C" stroke-width="4" />
+                            <path id="mainIWFlow" d="M 30,55 L 140,55 L 140,110 L 170,110" fill="none" stroke="#00E676" stroke-width="2.5" class="flow-active" />
+
+                            <!-- Bypass IW Line (N4) -->
+                            <path d="M 30,55 L 70,55 L 70,135 L 170,135" fill="none" stroke="#25354C" stroke-width="4" />
+                            <path id="bypassIWFlow" d="M 30,55 L 70,55 L 70,135 L 170,135" fill="none" stroke="#00B0FF" stroke-width="2.5" class="flow-active" />
+
+                            <!-- Merged Inlet into Basin -->
+                            <path d="M 215,122.5 L 240,122.5 L 240,185" fill="none" stroke="#25354C" stroke-width="4" />
+                            <path id="mergedInflow" d="M 215,122.5 L 240,122.5 L 240,185" fill="none" stroke="#00E676" stroke-width="2.5" class="flow-active" />
+
+                            <!-- Blowdown Output Line (Bottom) -->
+                            <path d="M 240,320 L 240,350 L 450,350" fill="none" stroke="#25354C" stroke-width="4" />
+                            <path id="blowdownFlow" d="M 240,320 L 240,350 L 450,350" fill="none" stroke="#FF1744" stroke-width="2.5" class="flow-active" stroke-dasharray="6,4" />
+
+                            <!-- VALVES (SVG Layout representation) -->
+                            <!-- BV. Main Valve Valve Block (N3) -->
+                            <g transform="translate(100, 45)" class="cursor-pointer">
+                                <polygon points="0,0 20,20 20,0 0,20" fill="#1A2333" stroke="#1D283A" stroke-width="1.5" />
+                                <rect x="7" y="5" width="6" height="10" fill="#1A2333" stroke="#1D283A" stroke-width="1" />
+                                <circle cx="10" cy="5" r="3" fill="#1A2333" stroke="#1D283A" stroke-width="1" />
+                                <rect id="mainValveIndicator" x="5" y="8" width="10" height="4" fill="#00E676" class="transition-colors duration-300" />
+                                <text x="10" y="-5" text-anchor="middle" fill="#8C9BAE" font-size="7" font-weight="bold">BV-01</text>
+                            </g>
+
+                            <!-- BV. Bypass Valve Block (N4) -->
+                            <g transform="translate(100, 125)" class="cursor-pointer">
+                                <polygon points="0,0 20,20 20,0 0,20" fill="#1A2333" stroke="#1D283A" stroke-width="1.5" />
+                                <rect x="7" y="5" width="6" height="10" fill="#1A2333" stroke="#1D283A" stroke-width="1" />
+                                <circle cx="10" cy="5" r="3" fill="#1A2333" stroke="#1D283A" stroke-width="1" />
+                                <rect id="bypassValveIndicator" x="5" y="8" width="10" height="4" fill="#FF1744" class="transition-colors duration-300" />
+                                <text x="10" y="-5" text-anchor="middle" fill="#8C9BAE" font-size="7" font-weight="bold">BV-BYPASS</text>
+                            </g>
+
+                            <!-- INLET SENSORS AND ARROWS -->
+                            <!-- Flow Transmitter 11FI1002 -->
+                            <circle cx="140" cy="80" r="12" fill="#121824" stroke="#00E676" stroke-width="1.5" />
+                            <line x1="140" y1="68" x2="140" y2="92" stroke="#00E676" stroke-width="0.5" />
+                            <text x="140" y="78" text-anchor="middle" fill="#00E676" font-size="6" font-weight="bold">11FI</text>
+                            <text x="140" y="86" text-anchor="middle" fill="#00E676" font-size="6" font-weight="bold">1002</text>
+
+                            <!-- COLD WATER BASIN (J-1223 A/B) -->
+                            <!-- Outer metal shell -->
+                            <rect x="170" y="185" width="140" height="135" rx="5" fill="none" stroke="#2C3A50" stroke-width="3" />
+                            <!-- Water volume clip & rect -->
+                            <g>
+                                <mask id="waterMask">
+                                    <rect x="172" y="187" width="136" height="131" rx="4" fill="white" />
+                                </mask>
+                                <!-- Changing blue dynamic water body -->
+                                <rect id="waterLevelBody" x="172" y="250" width="136" height="131" fill="#00B0FF" fill-opacity="0.35" mask="url(#waterMask)" class="transition-all duration-300" />
+                                <!-- Wave path on top of water -->
+                                <path id="waterWave" d="M172 250 Q206 248 240 250 T308 250 L308 320 L172 320 Z" fill="#00B0FF" fill-opacity="0.6" mask="url(#waterMask)" class="transition-all duration-300"/>
+                            </g>
+
+                            <!-- BASIN MARKERS & TICK LINES (Operating Depth Markers) -->
+                            <!-- Top/Overflow level (350mm) -->
+                            <line x1="165" y1="200" x2="315" y2="200" stroke="#FF1744" stroke-width="1" stroke-dasharray="2,2" />
+                            <text x="320" y="202" fill="#FF1744" font-size="7" font-weight="bold" font-family="monospace">350mm (OVERFLOW)</text>
+
+                            <!-- Normal operating level 100% (250mm) -->
+                            <line x1="165" y1="235" x2="315" y2="235" stroke="#00E676" stroke-width="1" stroke-dasharray="4,2" />
+                            <text x="320" y="237" fill="#00E676" font-size="7" font-weight="bold" font-family="monospace">250mm (100% NORMAL)</text>
+
+                            <!-- Low level limit (230mm) -->
+                            <line x1="165" y1="250" x2="315" y2="250" stroke="#FF8F00" stroke-width="1" stroke-dasharray="3,2" />
+                            <text x="320" y="252" fill="#FF8F00" font-size="7" font-weight="bold" font-family="monospace">230mm (LOW LIMIT)</text>
+
+                            <!-- Low-Low alarm limit (200mm) -->
+                            <line x1="165" y1="272" x2="315" y2="272" stroke="#FF1744" stroke-width="1.2" stroke-dasharray="1,2" />
+                            <text x="320" y="274" fill="#FF1744" font-size="7" font-weight="bold" font-family="monospace">200mm (LOW-LOW)</text>
+
+                            <!-- LEVEL TRANSMITTER 11LI1005 -->
+                            <line x1="190" y1="220" x2="190" y2="150" stroke="#00B0FF" stroke-width="1" stroke-dasharray="2,1" />
+                            <line x1="190" y1="150" x2="210" y2="150" stroke="#00B0FF" stroke-width="1" />
+                            <circle cx="210" cy="150" r="12" fill="#121824" stroke="#00B0FF" stroke-width="1.5" />
+                            <line x1="210" y1="138" x2="210" y2="162" stroke="#00B0FF" stroke-width="0.5" />
+                            <text x="210" y="148" text-anchor="middle" fill="#00B0FF" font-size="6" font-weight="bold">11LI</text>
+                            <text x="210" y="156" text-anchor="middle" fill="#00B0FF" font-size="6" font-weight="bold">1005</text>
+
+                            <!-- BASIN INFO INSIDE THE GRAPHIC -->
+                            <g transform="translate(180, 280)">
+                                <text x="0" y="0" fill="#E2E8F0" font-size="9" font-weight="bold">J-1223 A/B</text>
+                                <text x="0" y="10" fill="#8C9BAE" font-size="7">COLD WATER BASIN</text>
+                                <text id="graphicVolumeText" x="0" y="22" fill="#00B0FF" font-size="8" font-family="monospace">Vol: 11.45 m³</text>
+                            </g>
+
+                            <!-- EVAPORATION VAPOR EFFECT (Animated clouds above the cooling tower) -->
+                            <g id="evapVaporGroup">
+                                <path d="M 200,165 Q 205,150 200,135" fill="none" stroke="#FFFFFF" stroke-width="1.5" class="vapor-cloud vapor-delay-1" />
+                                <path d="M 220,160 Q 225,145 220,130" fill="none" stroke="#FFFFFF" stroke-width="1.5" class="vapor-cloud" />
+                                <path d="M 250,165 Q 255,150 250,135" fill="none" stroke="#FFFFFF" stroke-width="1.5" class="vapor-cloud vapor-delay-2" />
+                                <path d="M 280,160 Q 285,145 280,130" fill="none" stroke="#FFFFFF" stroke-width="1.5" class="vapor-cloud vapor-delay-3" />
+                                <text x="240" y="160" text-anchor="middle" fill="#8C9BAE" font-size="6" font-style="italic">Evaporation & Drift Loss</text>
+                            </g>
+
+                            <!-- BLOWDOWN DISCHARGE FLOW SENSOR (11FI1004) -->
+                            <circle cx="360" cy="350" r="11" fill="#121824" stroke="#FF1744" stroke-width="1.5" />
+                            <line x1="360" y1="339" x2="360" y2="361" stroke="#FF1744" stroke-width="0.5" />
+                            <text x="360" y="348" text-anchor="middle" fill="#FF1744" font-size="6" font-weight="bold">11FI</text>
+                            <text x="360" y="356" text-anchor="middle" fill="#FF1744" font-size="6" font-weight="bold">1004</text>
+                        </g>
+
+                        <!-- P&ID Status overlay labels -->
+                        <div class="absolute top-3 left-3 bg-[#121824]/90 border border-[#1D283A] px-2 py-1 rounded text-[10px] flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#00E676] animate-pulse"></span>
+                            <span class="text-white font-mono uppercase tracking-widest">P&ID LIVE FEED</span>
+                        </div>
+
+                        <!-- Cavitation warning badge on the graphic -->
+                        <div id="cavitationWarning" class="hidden absolute bottom-3 left-3 bg-red-950/80 border border-red-500 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold animate-pulse flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation"></i> CAVITATION THREAT (LOW LEVEL!)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WATER LEVEL CRITICAL THETA METRICS -->
+                <div class="grid grid-cols-4 gap-2 pt-3 border-t border-[#1D283A] text-center mt-3">
+                    <div class="bg-[#1A2333]/40 p-1.5 rounded border border-[#1D283A]">
+                        <p class="text-[9px] text-[#8C9BAE] uppercase font-bold tracking-wider">Volume (Litres)</p>
+                        <p class="text-sm font-bold text-white mono-font mt-0.5" id="volumeLitresText">11,450 L</p>
+                    </div>
+                    <div class="bg-[#1A2333]/40 p-1.5 rounded border border-[#1D283A]">
+                        <p class="text-[9px] text-[#8C9BAE] uppercase font-bold tracking-wider">Evap Loss</p>
+                        <p class="text-sm font-bold text-amber-500 mono-font mt-0.5" id="evapLossText">1.25 m³/h</p>
+                    </div>
+                    <div class="bg-[#1A2333]/40 p-1.5 rounded border border-[#1D283A]">
+                        <p class="text-[9px] text-[#8C9BAE] uppercase font-bold tracking-wider">Float Valve %</p>
+                        <p class="text-sm font-bold text-[#00E676] mono-font mt-0.5" id="floatFactorText">100%</p>
+                    </div>
+                    <div class="bg-[#1A2333]/40 p-1.5 rounded border border-[#1D283A]">
+                        <p class="text-[9px] text-[#8C9BAE] uppercase font-bold tracking-wider">Excess Spills</p>
+                        <p class="text-sm font-bold text-red-500 mono-font mt-0.5" id="overflowLossText">0.00 m³/h</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ZONE 3: DCS TELEMETRY & TREND (RIGHT PANEL) -->
+        <section class="lg:col-span-4 flex flex-col space-y-4">
+            <div class="bg-[#121824] border border-[#1D283A] rounded-xl p-4 flex flex-col h-full justify-between">
+                <div>
+                    <div class="flex items-center justify-between border-b border-[#1D283A] pb-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="p-1 bg-[#1A2333] border border-[#1D283A] rounded text-[#FF1744]"><i class="fa-solid fa-desktop text-sm"></i></span>
+                            <h2 class="text-sm font-bold tracking-wider text-white">🖥️ DCS TELEMETRY MONITOR</h2>
+                        </div>
+                        <span class="text-[10px] text-[#8C9BAE] font-mono">ZONE 3</span>
+                    </div>
+
+                    <!-- TELEMETRY MAIN DISPLAYS (SUPERSIZED FONTS) -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <!-- 11LI1005 Basin Level -->
+                        <div class="bg-[#1A2333] p-4 rounded-lg border border-[#1D283A] flex flex-col justify-between min-h-[140px]">
+                            <div class="flex items-center justify-between text-[11px] font-bold text-[#8C9BAE]">
+                                <span>11LI1005 LEVEL</span>
+                                <span class="px-2 py-0.5 bg-[#00B0FF]/10 text-[#00B0FF] rounded text-[9px] font-bold">BASIN</span>
+                            </div>
+                            <div class="my-2">
+                                <span class="text-5xl font-black text-white tracking-tight mono-font" id="telemetryLevel">245.0</span>
+                                <span class="text-sm text-[#8C9BAE] font-mono ml-0.5">mm</span>
+                            </div>
+                            <div class="flex items-center justify-between text-xs border-t border-[#233149] pt-2 mt-1">
+                                <span class="text-[#00B0FF] font-black text-sm" id="telemetryLevelPercent">98.0 %</span>
+                                <span class="text-[#00E676] font-extrabold text-xs animate-pulse" id="levelStatusLabel">NORMAL</span>
+                            </div>
+                        </div>
+
+                        <!-- 11FI1002 Total Inflow -->
+                        <div class="bg-[#1A2333] p-4 rounded-lg border border-[#1D283A] flex flex-col justify-between min-h-[140px]">
+                            <div class="flex items-center justify-between text-[11px] font-bold text-[#8C9BAE]">
+                                <span>11FI1002 INFLOW</span>
+                                <span class="px-2 py-0.5 bg-[#00E676]/10 text-[#00E676] rounded text-[9px] font-bold">TOTAL</span>
+                            </div>
+                            <div class="my-2">
+                                <span class="text-5xl font-black text-[#00E676] tracking-tight mono-font" id="telemetryInflow">9.75</span>
+                                <span class="text-sm text-[#8C9BAE] font-mono ml-0.5">m³/h</span>
+                            </div>
+                            <div class="flex justify-between text-xs border-t border-[#233149] pt-2 mt-1 text-gray-400">
+                                <span id="telemetryMainFlow" class="text-gray-300 font-semibold text-[10px]">M: 9.8 m³/h</span>
+                                <span id="telemetryBypFlow" class="text-blue-300 font-semibold text-[10px]">B: 0.0 m³/h</span>
+                            </div>
+                        </div>
+
+                        <!-- 11FO1001 Total Outflow -->
+                        <div class="bg-[#1A2333] p-4 rounded-lg border border-[#1D283A] flex flex-col justify-between min-h-[140px]">
+                            <div class="flex items-center justify-between text-[11px] font-bold text-[#8C9BAE]">
+                                <span>11FO1001 OUTFLOW</span>
+                                <span class="px-2 py-0.5 bg-[#FF1744]/10 text-[#FF1744] rounded text-[9px] font-bold">TOTAL</span>
+                            </div>
+                            <div class="my-2">
+                                <span class="text-5xl font-black text-[#FF1744] tracking-tight mono-font" id="telemetryOutflow">4.85</span>
+                                <span class="text-sm text-[#8C9BAE] font-mono ml-0.5">m³/h</span>
+                            </div>
+                            <div class="text-xs border-t border-[#233149] pt-2 mt-1 text-gray-400 flex justify-between">
+                                <span class="text-[10px]">Bld: <span id="telemetryBld" class="text-white font-mono font-bold">3.5</span></span>
+                                <span class="text-[10px]">Evp: <span id="telemetryEvp" class="text-white font-mono font-bold">1.3</span></span>
+                            </div>
+                        </div>
+
+                        <!-- DYNAMIC NEON RUNNING BORDER TENDENCY CARD -->
+                        <div class="neon-card-wrapper" id="tendencyCardWrapper">
+                            <div id="neonBorderRotator" class="neon-card-bg neon-card-bg-stable"></div>
+                            <div class="neon-card-content p-4 flex flex-col justify-between min-h-[140px]" id="tendencyCard">
+                                <div class="text-[11px] font-bold text-[#8C9BAE]">LEVEL TENDENCY</div>
+                                <div class="my-2 flex items-center space-x-3">
+                                    <span id="tendencyArrow" class="text-3xl"><i class="fa-solid fa-arrow-trend-up text-[#00E676]"></i></span>
+                                    <span id="tendencyStatus" class="text-2xl font-black text-white tracking-wide uppercase">RISING</span>
+                                </div>
+                                <div class="text-xs text-gray-400 font-mono flex justify-between items-center border-t border-[#233149] pt-2 mt-1">
+                                    <span>Balance Net:</span>
+                                    <span id="tendencyRate" class="text-white font-black text-base">+1.23 mm/m</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- REAL-TIME HISTORICAL SCROLLING GRAPH (AUTO-ZOOM MODE) -->
+                    <div class="bg-[#0E1522] rounded-xl border border-[#1D283A] p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-bold text-[#00B0FF] tracking-wider uppercase flex items-center gap-1">
+                                <i class="fa-solid fa-expand animate-pulse"></i> Auto-Zoom Trend Telemetry
+                            </span>
+                            <div class="flex items-center space-x-3 text-[9px] font-mono">
+                                <span class="flex items-center gap-1 text-[#00B0FF]"><span class="w-2 h-0.5 bg-[#00B0FF]"></span> Level (mm)</span>
+                                <span class="flex items-center gap-1 text-[#00E676]"><span class="w-2 h-0.5 bg-[#00E676]"></span> Inflow (m³/h)</span>
+                            </div>
+                        </div>
+                        <!-- Canvas Plotter -->
+                        <canvas id="trendCanvas" class="w-full h-[155px] bg-[#0E1522] rounded-lg"></canvas>
+                    </div>
+                </div>
+
+                <!-- ALARM ANNUNCIATOR LIGHT PANEL -->
+                <div class="mt-4 pt-3 border-t border-[#1D283A]">
+                    <p class="text-[10px] font-bold text-[#8C9BAE] uppercase mb-2 tracking-widest"><i class="fa-solid fa-bell mr-1"></i> Control Room Annunciator</p>
+                    <div class="grid grid-cols-3 gap-1.5 text-center text-[9px] font-bold">
+                        <div id="annuncOverflow" class="py-1.5 rounded border border-[#233149] bg-[#1A2333]/30 text-gray-500 uppercase transition-colors duration-300">Overflow</div>
+                        <div id="annuncHigh" class="py-1.5 rounded border border-[#233149] bg-[#1A2333]/30 text-gray-500 uppercase transition-colors duration-300">Float Shutoff</div>
+                        <div id="annuncLow" class="py-1.5 rounded border border-[#233149] bg-[#1A2333]/30 text-gray-500 uppercase transition-colors duration-300">Low Limit</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER / LOGS -->
+    <footer class="bg-[#121824] border-t border-[#1D283A] px-6 py-2 flex justify-between items-center text-[10px] text-[#8C9BAE] z-10">
+        <div class="flex items-center gap-4">
+            <span><strong>DCS Operator Console:</strong> GEG-4-COOLING-TOWER</span>
+            <span>|</span>
+            <span id="timestamp" class="font-mono">SYS-TIME: 2026-06-04 22:37:58</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1 text-[#00E676]"><span class="w-1.5 h-1.5 rounded-full bg-[#00E676]"></span> ALL INTRINSIC LOOPS CLOSED</span>
+            <span>&bull;</span>
+            <span class="hover:text-white cursor-pointer"><i class="fa-solid fa-circle-info"></i> Process Information</span>
+        </div>
+    </footer>
+
+    <script>
+        /* -------------------------------------------------------------
+           SCADA GEG-4 PHYSICS & STATE ENGINE VARIABLES
+           ------------------------------------------------------------- */
+        
+        // Dynamic State Objects
+        const SimState = {
+            // Operator Settings / Controls
+            mainValveSetting: 65,      // % Opening requested by operator
+            bypassValveSetting: 0,     // % Opening requested by operator
+            inletPressure: 6.4,        // Barg
+            blowdownRate: 3.5,         // m³/h set directly
+            ambientTemp: 33.0,         // °C (Normal = 33°C)
+
+            // Dynamic Calculations
+            currentLevel: 245.0,       // mm (Starts near nominal 250mm)
+            mainValveActual: 65,       // % Actual (taking mechanical float valve throttling into account)
+            flowInMain: 0,             // m³/h from main line (N3)
+            flowInBypass: 0,           // m³/h from bypass (N4)
+            flowTotalInflow: 0,        // m³/h sum of inputs (11FI1002)
+            
+            flowEvaporation: 0,        // m³/h calculated based on temp
+            flowDrift: 0.15,           // m³/h constant baseline
+            flowOverflow: 0,           // m³/h spills if level exceeds 350mm
+            flowTotalOutflow: 0,       // m³/h sum of output processes (11FO1001)
+
+            levelTendencyRate: 0,      // mm/min (rate of level change)
+            
+            // Simulation Options
+            isPaused: false,
+            simulationSpeed: 1,        // Speed multiplier: 1x, 5x, 10x
+            soundAlarmActive: false,
+            soundMuted: true,
+            
+            // Rain Disturbance Event
+            rainDisturbanceTimer: 0,   // seconds of rain flow remaining
+            rainInflowRate: 0,          // m³/h additional
+            
+            // History for the Live Trend plot
+            history: []                // items of {time, level, inflow, outflow}
+        };
+
+        // Static Constants (As specified by physical dimensions)
+        const Constants = {
+            basinSurfaceArea: 47.39,   // m² (J-1223 A/B Surface Area)
+            nominalLevel: 250.0,       // mm (Nominal 100% DCS marker)
+            overflowLimit: 350.0,      // mm (Physical overflow threshold)
+            lowLevelLimit: 230.0,      // mm (Low alert threshold)
+            lowLowLevelLimit: 200.0,   // mm (Pump damage / Low-Low trip)
+            floatShutoffStart: 215.0,  // mm (Float starts mechanical valve throttling)
+            floatShutoffEnd: 225.0,    // mm (Float fully closes main valve at 90% level)
+            maxFlowPerValve: 7.5       // m³/h per valve at 6.4 Barg when 100% open
+        };
+
+        // Audio System for Control Room Alarm Sound
+        let audioCtx = null;
+        let alarmOscillator = null;
+        let alarmInterval = null;
+
+        // Initialize Plot data limit
+        const MAX_HISTORY_POINTS = 120; // Holds ~2 minutes at 1 update/sec
+
+        /* -------------------------------------------------------------
+           STATE UPDATE FUNCTIONS FOR OPERATORS
+           ------------------------------------------------------------- */
+        function updateMainValve(val) {
+            SimState.mainValveSetting = parseFloat(val);
+            document.getElementById('mainValveVal').innerText = val + "%";
+        }
+
+        function updateBypassValve(val) {
+            SimState.bypassValveSetting = parseFloat(val);
+            document.getElementById('bypassValveVal').innerText = val + "%";
+        }
+
+        function updatePressure(val) {
+            SimState.inletPressure = parseFloat(val);
+            document.getElementById('pressureVal').innerText = parseFloat(val).toFixed(1);
+        }
+
+        function updateBlowdown(val) {
+            SimState.blowdownRate = parseFloat(val);
+            document.getElementById('blowdownVal').innerText = parseFloat(val).toFixed(1);
+        }
+
+        function updateTemp(val) {
+            SimState.ambientTemp = parseFloat(val);
+            document.getElementById('tempVal').innerText = parseFloat(val).toFixed(1);
+        }
+
+        // Apply pre-configured training scenarios
+        function applyPreset(scenario) {
+            switch (scenario) {
+                case "steady":
+                    updateMainValve(65);
+                    document.getElementById('mainValveSlider').value = 65;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(6.4);
+                    document.getElementById('pressureSlider').value = 6.4;
+                    updateBlowdown(3.5);
+                    document.getElementById('blowdownSlider').value = 3.5;
+                    updateTemp(33.0);
+                    document.getElementById('tempSlider').value = 33.0;
+                    SimState.currentLevel = 245.0; // Steady starting level
+                    break;
+                case "highPressure":
+                    updateMainValve(30);
+                    document.getElementById('mainValveSlider').value = 30;
+                    updateBypassValve(40);
+                    document.getElementById('bypassValveSlider').value = 40;
+                    updatePressure(9.0);
+                    document.getElementById('pressureSlider').value = 9.0;
+                    updateBlowdown(1.5);
+                    document.getElementById('blowdownSlider').value = 1.5;
+                    updateTemp(30.0);
+                    document.getElementById('tempSlider').value = 30.0;
+                    break;
+                case "criticalLow":
+                    updateMainValve(10);
+                    document.getElementById('mainValveSlider').value = 10;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(4.5);
+                    document.getElementById('pressureSlider').value = 4.5;
+                    updateBlowdown(8.5);
+                    document.getElementById('blowdownSlider').value = 8.5;
+                    updateTemp(42.0);
+                    document.getElementById('tempSlider').value = 42.0;
+                    break;
+                case "floatTest":
+                    // To test float mechanical throttling, open main valve 100%, close others
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(6.4);
+                    document.getElementById('pressureSlider').value = 6.4;
+                    updateBlowdown(1.0);
+                    document.getElementById('blowdownSlider').value = 1.0;
+                    updateTemp(28.0);
+                    document.getElementById('tempSlider').value = 28.0;
+                    SimState.currentLevel = 210.0; // Start below float trigger
+                    break;
+                case "hotSummer":
+                    updateMainValve(85);
+                    document.getElementById('mainValveSlider').value = 85;
+                    updateBypassValve(10);
+                    document.getElementById('bypassValveSlider').value = 10;
+                    updatePressure(5.8);
+                    document.getElementById('pressureSlider').value = 5.8;
+                    updateBlowdown(4.5);
+                    document.getElementById('blowdownSlider').value = 4.5;
+                    updateTemp(45.0); // Maximum summer evap
+                    document.getElementById('tempSlider').value = 45.0;
+                    break;
+                case "method1":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(6.6);
+                    document.getElementById('pressureSlider').value = 6.6;
+                    updateBlowdown(3.0);
+                    document.getElementById('blowdownSlider').value = 3.0;
+                    updateTemp(33.2);
+                    document.getElementById('tempSlider').value = 33.2;
+                    SimState.currentLevel = 93.26 * 2.5; // (Nominal 100% = 250mm) => 233.15 mm
+                    break;
+                case "method2":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(6.4);
+                    document.getElementById('pressureSlider').value = 6.4;
+                    updateBlowdown(4.0);
+                    document.getElementById('blowdownSlider').value = 4.0;
+                    updateTemp(32.9);
+                    document.getElementById('tempSlider').value = 32.9;
+                    SimState.currentLevel = 91.32 * 2.5; // 228.30 mm
+                    break;
+                case "method3":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(6.3);
+                    document.getElementById('pressureSlider').value = 6.3;
+                    updateBlowdown(4.0);
+                    document.getElementById('blowdownSlider').value = 4.0;
+                    updateTemp(33.0);
+                    document.getElementById('tempSlider').value = 33.0;
+                    SimState.currentLevel = 89.54 * 2.5; // 223.85 mm
+                    break;
+                case "method4":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(0);
+                    document.getElementById('bypassValveSlider').value = 0;
+                    updatePressure(6.4);
+                    document.getElementById('pressureSlider').value = 6.4;
+                    updateBlowdown(4.0);
+                    document.getElementById('blowdownSlider').value = 4.0;
+                    updateTemp(32.7);
+                    document.getElementById('tempSlider').value = 32.7;
+                    SimState.currentLevel = 88.01 * 2.5; // 220.03 mm
+                    break;
+                case "method5":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(50);
+                    document.getElementById('bypassValveSlider').value = 50;
+                    updatePressure(5.7);
+                    document.getElementById('pressureSlider').value = 5.7;
+                    updateBlowdown(4.0);
+                    document.getElementById('blowdownSlider').value = 4.0;
+                    updateTemp(32.7);
+                    document.getElementById('tempSlider').value = 32.7;
+                    SimState.currentLevel = 87.50 * 2.5; // 218.75 mm
+                    break;
+                case "method6":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(100);
+                    document.getElementById('bypassValveSlider').value = 100;
+                    updatePressure(6.0);
+                    document.getElementById('pressureSlider').value = 6.0;
+                    updateBlowdown(4.0);
+                    document.getElementById('blowdownSlider').value = 4.0;
+                    updateTemp(32.6);
+                    document.getElementById('tempSlider').value = 32.6;
+                    SimState.currentLevel = 86.59 * 2.5; // 216.48 mm
+                    break;
+                case "method7":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(100);
+                    document.getElementById('bypassValveSlider').value = 100;
+                    updatePressure(6.5);
+                    document.getElementById('pressureSlider').value = 6.5;
+                    updateBlowdown(3.0);
+                    document.getElementById('blowdownSlider').value = 3.0;
+                    updateTemp(32.9);
+                    document.getElementById('tempSlider').value = 32.9;
+                    SimState.currentLevel = 85.74 * 2.5; // 214.35 mm
+                    break;
+                case "method8":
+                    updateMainValve(100);
+                    document.getElementById('mainValveSlider').value = 100;
+                    updateBypassValve(100);
+                    document.getElementById('bypassValveSlider').value = 100;
+                    updatePressure(6.5);
+                    document.getElementById('pressureSlider').value = 6.5;
+                    updateBlowdown(1.8);
+                    document.getElementById('blowdownSlider').value = 1.8;
+                    updateTemp(32.6);
+                    document.getElementById('tempSlider').value = 32.6;
+                    SimState.currentLevel = 85.50 * 2.5; // 213.75 mm
+                    break;
+            }
+        }
+
+        // Trigger an unexpected environmental disturbance (Rainfall stormwater inflow)
+        function triggerRainDisturbance() {
+            SimState.rainDisturbanceTimer = 30; // 30 seconds of simulated downpour
+            SimState.rainInflowRate = 5.0; // +5.0 m³/h additional flow directly falling into basin
+            showFlashMessage("ENVIRONMENTAL DISTURBANCE: Heavy rainfall active (+5.0 m³/h inflow for 30s)", "info");
+        }
+
+        function resetSimulation() {
+            SimState.currentLevel = 245.0;
+            applyPreset('steady');
+            document.getElementById('presetSelect').value = 'steady';
+            SimState.history = [];
+            showFlashMessage("SIMULATION CONTROLLER RESET COMPLETE", "success");
+        }
+
+        // Change simulation calculation speed (useful for training acceleration)
+        function setSimSpeed(speed) {
+            SimState.simulationSpeed = speed;
+            document.getElementById('speedBtn1').className = `px-3 py-1.5 text-xs font-bold transition-all ${speed === 1 ? 'bg-[#00B0FF] text-slate-900' : 'text-[#8C9BAE] hover:text-white'}`;
+            document.getElementById('speedBtn5').className = `px-3 py-1.5 text-xs font-bold transition-all ${speed === 5 ? 'bg-[#00B0FF] text-slate-900' : 'text-[#8C9BAE] hover:text-white'}`;
+            document.getElementById('speedBtn10').className = `px-3 py-1.5 text-xs font-bold transition-all ${speed === 10 ? 'bg-[#00B0FF] text-slate-900' : 'text-[#8C9BAE] hover:text-white'}`;
+        }
+
+        /* -------------------------------------------------------------
+           SIMULATION PHYSICS & DYNAMICS ENGINE (RUNNING AT 10Hz)
+           ------------------------------------------------------------- */
+        function computeDynamicStep() {
+            // Delta time for our physics solver step. Running 10 times a second -> dt = 0.1s.
+            // Adjusted dynamically by our Simulation Speed multiplier.
+            const baseDt = 0.1; 
+            const dt = baseDt * SimState.simulationSpeed;
+
+            // Update Disturbance rain timer
+            if (SimState.rainDisturbanceTimer > 0) {
+                SimState.rainDisturbanceTimer -= baseDt; // Realworld time decays at 1x
+                if (SimState.rainDisturbanceTimer <= 0) {
+                    SimState.rainInflowRate = 0;
+                    showFlashMessage("Rainfall disturbance cleared.", "info");
+                }
+            }
+
+            // 1. Mechanical Floating Valve Logic (Throttles gradually based on actual level)
+            // Starts closing at 215mm (Float touching) and fully shuts off at 225mm (Float at top/90% level).
+            let floatFactor = 1.0;
+            if (SimState.currentLevel >= Constants.floatShutoffEnd) {
+                floatFactor = 0.0;
+            } else if (SimState.currentLevel > Constants.floatShutoffStart) {
+                // Linear decay between start and end
+                floatFactor = 1.0 - ((SimState.currentLevel - Constants.floatShutoffStart) / (Constants.floatShutoffEnd - Constants.floatShutoffStart));
+            }
+            SimState.mainValveActual = SimState.mainValveSetting * floatFactor;
+
+            // 2. Compute Flows based on Valve Positions & System Pressure
+            // Flow ~ Opening * sqrt(Pressure / 6.4 barg Nominal)
+            const pressureFactor = Math.sqrt(SimState.inletPressure / 6.4);
+            
+            SimState.flowInMain = Constants.maxFlowPerValve * (SimState.mainValveActual / 100) * pressureFactor;
+            SimState.flowInBypass = Constants.maxFlowPerValve * (SimState.bypassValveSetting / 100) * pressureFactor;
+            
+            // Total Inflow
+            SimState.flowTotalInflow = SimState.flowInMain + SimState.flowInBypass + SimState.rainInflowRate;
+
+            // 3. Compute Outflows
+            // Evaporation Loss increases with ambient temperature
+            // Baseline evap is 1.2 m³/h at 33°C, rising by 0.05 m³/h for each degree Celsius higher
+            SimState.flowEvaporation = 1.2 + ((SimState.ambientTemp - 33.0) * 0.05);
+            if (SimState.flowEvaporation < 0.2) SimState.flowEvaporation = 0.2; // Floor limits
+
+            // Overflow logic
+            // Spill rate triggers when level exceeds 350mm overflow limit
+            if (SimState.currentLevel > Constants.overflowLimit) {
+                const excessHeightMeters = (SimState.currentLevel - Constants.overflowLimit) / 1000;
+                // High rate drain modeling physical weir flow
+                SimState.flowOverflow = 45.0 * Math.pow(excessHeightMeters, 1.5) * 1000; // Spill rate in m3/h
+            } else {
+                SimState.flowOverflow = 0.0;
+            }
+
+            // Total dynamic outflow
+            SimState.flowTotalOutflow = SimState.blowdownRate + SimState.flowEvaporation + SimState.flowDrift + SimState.flowOverflow;
+
+            // 4. Solve Differential Equation for Basin Water Balance
+            // dH/dt = (Qin - Qout) / Basin Area
+            // Qin, Qout in m³/h. Area in m². Level in meters.
+            // Conversions: 1 hour = 60 minutes. Level in mm.
+            const netFlowRate = SimState.flowTotalInflow - SimState.flowTotalOutflow; // m³/h
+            
+            // Level change in mm/min
+            SimState.levelTendencyRate = (netFlowRate * 1000) / (Constants.basinSurfaceArea * 60);
+
+            // Level change in this specific simulation step
+            const levelChangeThisStep = SimState.levelTendencyRate * (dt / 60);
+            
+            // Apply level limits (Cannot go below empty 0mm or physically above physical concrete wall 400mm)
+            SimState.currentLevel = Math.max(0.0, Math.min(400.0, SimState.currentLevel + levelChangeThisStep));
+        }
+
+        /* -------------------------------------------------------------
+           CONTROL ROOM SOUND ALARM (Web Audio API Synthesizer)
+           ------------------------------------------------------------- */
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playAlarmBeep() {
+            if (SimState.soundMuted) return;
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // Create oscillators for an industrial warning sound
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Pitch (High A)
+            
+            // Pulse envelope
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        function toggleSound() {
+            SimState.soundMuted = !SimState.soundMuted;
+            const btn = document.getElementById('soundToggleBtn');
+            const icon = document.getElementById('soundIcon');
+            
+            if (SimState.soundMuted) {
+                icon.className = "fa-solid fa-volume-xmark";
+                btn.className = "px-3 py-2 rounded-lg bg-[#1A2333] border border-[#233149] hover:bg-[#233149] text-gray-400 hover:text-white flex items-center justify-center gap-1.5 transition";
+                stopAlarmLoop();
+            } else {
+                icon.className = "fa-solid fa-volume-high text-[#00E676] animate-bounce";
+                btn.className = "px-3 py-2 rounded-lg bg-[#1A2333] border border-[#00E676]/30 hover:bg-[#233149] text-white flex items-center justify-center gap-1.5 transition neon-glow-green";
+                initAudio();
+                startAlarmLoop();
+            }
+        }
+
+        function startAlarmLoop() {
+            if (alarmInterval) clearInterval(alarmInterval);
+            alarmInterval = setInterval(() => {
+                if (SimState.soundAlarmActive) {
+                    playAlarmBeep();
+                }
+            }, 800); // Repeat beep every 800ms when Alarm is actively tripped
+        }
+
+        function stopAlarmLoop() {
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+            }
+        }
+
+        /* -------------------------------------------------------------
+           GRAPHIC RE-RENDERING & STATE SYNCHRONIZATION
+           ------------------------------------------------------------- */
+        function updateGraphicUI() {
+            // Calculate height % for the SVG rendering
+            // Max height is mapped at 400 mm, full depth is 135px in our SVG frame
+            // Water starts filling from bottom (Y = 320px) to top (Y = 185px)
+            // Basin Y starts at 185, height is 135
+            const levelPercentPhysical = SimState.currentLevel / 400.0;
+            const waterHeight = Math.min(131, 131 * levelPercentPhysical);
+            const waterY = 318 - waterHeight;
+
+            // Set dynamic water body dimensions
+            const waterBody = document.getElementById('waterLevelBody');
+            const waterWave = document.getElementById('waterWave');
+            
+            waterBody.setAttribute('y', waterY);
+            waterBody.setAttribute('height', waterHeight);
+            
+            // Render oscillating wave at the water crest
+            const waveWidth = 136;
+            const waveFreq = Date.now() / 300;
+            const waveAmplitude = SimState.levelTendencyRate !== 0 ? 3 : 1; // Bigger waves if water is shifting fast
+            const yOffset = waterY;
+            
+            let wavePath = `M 172 ${yOffset}`;
+            for (let x = 0; x <= waveWidth; x += 5) {
+                const waveX = 172 + x;
+                const waveY = yOffset + Math.sin((x / 15) + waveFreq) * waveAmplitude;
+                wavePath += ` L ${waveX} ${waveY}`;
+            }
+            wavePath += ` L 308 320 L 172 320 Z`;
+            waterWave.setAttribute('d', wavePath);
+
+            // Update P&ID flows dash arrays based on whether flow exists
+            setPipelineFlowAnimation('mainIWFlow', SimState.flowInMain);
+            setPipelineFlowAnimation('bypassIWFlow', SimState.flowInBypass);
+            setPipelineFlowAnimation('mergedInflow', SimState.flowTotalInflow);
+            setPipelineFlowAnimation('blowdownFlow', SimState.blowdownRate);
+
+            // Update Valve indicator lights
+            document.getElementById('mainValveIndicator').setAttribute('fill', SimState.flowInMain > 0 ? '#00E676' : '#FF1744');
+            document.getElementById('bypassValveIndicator').setAttribute('fill', SimState.flowInBypass > 0 ? '#00B0FF' : '#FF1744');
+
+            // Update Volume visual text inside the graphic
+            const volumeLitres = SimState.currentLevel * Constants.basinSurfaceArea; // Area m² * Depth mm = Litres
+            document.getElementById('graphicVolumeText').textContent = `Vol: ${(volumeLitres / 1000).toFixed(2)} m³`;
+            document.getElementById('volumeLitresText').textContent = Math.round(volumeLitres).toLocaleString() + " L";
+
+            // Control Vapor animation rate based on temperature/evaporation rate
+            const vaporGroup = document.getElementById('evapVaporGroup');
+            if (SimState.flowEvaporation > 0.5) {
+                vaporGroup.setAttribute('opacity', '1');
+            } else {
+                vaporGroup.setAttribute('opacity', '0.2');
+            }
+
+            // Adjust float status info text
+            let floatStatusText = document.getElementById('floatStatusText');
+            if (SimState.currentLevel >= Constants.floatShutoffEnd) {
+                floatStatusText.textContent = "Mechanical OVERRIDE: SHUT";
+                floatStatusText.className = "text-[#FF1744] font-black animate-pulse";
+            } else if (SimState.currentLevel > Constants.floatShutoffStart) {
+                floatStatusText.textContent = `Throttling (${Math.round((SimState.mainValveActual / SimState.mainValveSetting) * 100)}%)`;
+                floatStatusText.className = "text-yellow-500 font-bold";
+            } else {
+                floatStatusText.textContent = "Float Mechanical Idle";
+                floatStatusText.className = "text-[#00E676] font-semibold";
+            }
+            document.getElementById('floatFactorText').textContent = `${Math.round((SimState.mainValveActual / SimState.mainValveSetting) * 100)}%`;
+            document.getElementById('evapLossText').textContent = `${SimState.flowEvaporation.toFixed(2)} m³/h`;
+            document.getElementById('overflowLossText').textContent = `${SimState.flowOverflow.toFixed(2)} m³/h`;
+        }
+
+        // Helper to enable/disable pipeline dash animations
+        function setPipelineFlowAnimation(id, flowVal) {
+            const el = document.getElementById(id);
+            if (flowVal > 0) {
+                el.style.display = "block";
+                // Adjust speed of particles based on real flow rate
+                const animDuration = Math.max(0.3, 3 / flowVal);
+                el.style.animationDuration = `${animDuration}s`;
+            } else {
+                el.style.display = "none";
+            }
+        }
+
+        /* -------------------------------------------------------------
+           DCS CORE DISPLAY SYNCHRONIZER
+           ------------------------------------------------------------- */
+        function updateDCSDisplays() {
+            // Basin Level (mm and percent)
+            const levelPercent = (SimState.currentLevel / Constants.nominalLevel) * 100.0;
+            document.getElementById('telemetryLevel').innerText = SimState.currentLevel.toFixed(1);
+            document.getElementById('telemetryLevelPercent').innerText = levelPercent.toFixed(1) + " %";
+
+            // Flows
+            document.getElementById('telemetryInflow').innerText = SimState.flowTotalInflow.toFixed(2);
+            document.getElementById('telemetryOutflow').innerText = SimState.flowTotalOutflow.toFixed(2);
+
+            document.getElementById('telemetryMainFlow').innerText = `M: ${SimState.flowInMain.toFixed(1)} m³/h`;
+            document.getElementById('telemetryBypFlow').innerText = `B: ${SimState.flowInBypass.toFixed(1)} m³/h`;
+            document.getElementById('telemetryBld').innerText = SimState.blowdownRate.toFixed(1);
+            document.getElementById('telemetryEvp').innerText = SimState.flowEvaporation.toFixed(1);
+
+            // Tendency Card calculations & indicators (Dolphin Neon light adjustments)
+            const tendencyCard = document.getElementById('tendencyCard');
+            const tendencyArrow = document.getElementById('tendencyArrow');
+            const tendencyStatus = document.getElementById('tendencyStatus');
+            const tendencyRate = document.getElementById('tendencyRate');
+            const neonBorderRotator = document.getElementById('neonBorderRotator');
+
+            const diff = SimState.flowTotalInflow - SimState.flowTotalOutflow;
+            const rateOfChange = SimState.levelTendencyRate; // mm/minute
+
+            if (Math.abs(diff) < 0.05) {
+                // STABLE - Green Running Light
+                neonBorderRotator.className = "neon-card-bg neon-card-bg-stable";
+                tendencyCard.style.backgroundColor = "#122018"; // Slight dark green tint
+                tendencyArrow.innerHTML = `<i class="fa-solid fa-circle-check text-[#00E676]"></i>`;
+                tendencyStatus.innerText = "STABLE";
+                tendencyStatus.className = "text-2xl font-black text-[#00E676] tracking-wide uppercase";
+                tendencyRate.innerText = "0.00 mm/m";
+                tendencyRate.className = "text-[#00E676] font-black text-lg";
+            } else if (diff > 0) {
+                // RISING - Cyan Running Light
+                neonBorderRotator.className = "neon-card-bg neon-card-bg-rising";
+                tendencyCard.style.backgroundColor = "#101F2B"; // Slight dark cyan tint
+                tendencyArrow.innerHTML = `<i class="fa-solid fa-circle-chevron-up text-[#00B0FF] animate-bounce"></i>`;
+                tendencyStatus.innerText = "RISING";
+                tendencyStatus.className = "text-2xl font-black text-[#00B0FF] tracking-wide uppercase";
+                tendencyRate.innerText = `+${rateOfChange.toFixed(2)} mm/m`;
+                tendencyRate.className = "text-[#00B0FF] font-black text-lg";
+            } else {
+                // FALLING - Red Running Light
+                neonBorderRotator.className = "neon-card-bg neon-card-bg-falling";
+                tendencyCard.style.backgroundColor = "#261318"; // Slight dark red tint
+                tendencyArrow.innerHTML = `<i class="fa-solid fa-circle-chevron-down text-[#FF1744] animate-bounce"></i>`;
+                tendencyStatus.innerText = "FALLING";
+                tendencyStatus.className = "text-2xl font-black text-[#FF1744] tracking-wide uppercase";
+                tendencyRate.innerText = `${rateOfChange.toFixed(2)} mm/m`;
+                tendencyRate.className = "text-[#FF1744] font-black text-lg";
+            }
+
+            // LEVEL STATE ALARMS & SOUND CONTROL
+            const alarmFlasher = document.getElementById('alarmFlashOverlay');
+            const cavitationWarn = document.getElementById('cavitationWarning');
+            const levelLabel = document.getElementById('levelStatusLabel');
+
+            // Reset alarms states
+            let isAlarmActive = false;
+            document.getElementById('annuncOverflow').className = "py-1.5 rounded border border-[#233149] bg-[#1A2333]/30 text-gray-500 uppercase";
+            document.getElementById('annuncHigh').className = "py-1.5 rounded border border-[#233149] bg-[#1A2333]/30 text-gray-500 uppercase";
+            document.getElementById('annuncLow').className = "py-1.5 rounded border border-[#233149] bg-[#1A2333]/30 text-gray-500 uppercase";
+
+            if (SimState.currentLevel >= Constants.overflowLimit) {
+                // HIGH-HIGH OVERFLOW ALARM
+                isAlarmActive = true;
+                alarmFlasher.className = "absolute inset-0 pointer-events-none transition-colors duration-300 z-10 bg-red-950/20 border-4 border-red-500 animate-pulse";
+                levelLabel.textContent = "OVERFLOW!";
+                levelLabel.className = "text-red-500 font-black animate-pulse";
+                document.getElementById('annuncOverflow').className = "py-1.5 rounded border border-red-500 bg-red-950/80 text-red-500 uppercase animate-pulse font-black";
+            } else if (SimState.currentLevel >= Constants.floatShutoffEnd) {
+                // HIGH / Float Valve Engaged Status
+                levelLabel.textContent = "HIGH (90%)";
+                levelLabel.className = "text-yellow-500 font-extrabold";
+                document.getElementById('annuncHigh').className = "py-1.5 rounded border border-yellow-500 bg-yellow-950/50 text-yellow-500 uppercase font-black";
+                alarmFlasher.className = "absolute inset-0 pointer-events-none z-10 bg-transparent";
+            } else if (SimState.currentLevel < Constants.lowLowLevelLimit) {
+                // CRITICAL LOW-LOW CAVITATION ALARM
+                isAlarmActive = true;
+                alarmFlasher.className = "absolute inset-0 pointer-events-none transition-colors duration-300 z-10 bg-red-950/35 border-4 border-red-500 animate-pulse";
+                cavitationWarn.classList.remove('hidden');
+                levelLabel.textContent = "TRIP / LOW-LOW";
+                levelLabel.className = "text-red-500 font-black animate-pulse";
+                document.getElementById('annuncLow').className = "py-1.5 rounded border border-red-500 bg-red-950/80 text-red-500 uppercase animate-pulse font-black";
+            } else if (SimState.currentLevel < Constants.lowLevelLimit) {
+                // LOW LIMIT WARNING
+                levelLabel.textContent = "LOW WARNING";
+                levelLabel.className = "text-amber-500 font-bold animate-pulse";
+                document.getElementById('annuncLow').className = "py-1.5 rounded border border-amber-500 bg-amber-950/50 text-amber-500 uppercase font-black";
+                cavitationWarn.classList.add('hidden');
+                alarmFlasher.className = "absolute inset-0 pointer-events-none z-10 bg-transparent";
+            } else {
+                // NORMAL
+                levelLabel.textContent = "NORMAL";
+                levelLabel.className = "text-[#00E676] font-bold";
+                cavitationWarn.classList.add('hidden');
+                alarmFlasher.className = "absolute inset-0 pointer-events-none z-10 bg-transparent";
+            }
+
+            SimState.soundAlarmActive = isAlarmActive;
+        }
+
+        /* -------------------------------------------------------------
+           SCADA REAL-TIME TREND CHART (AUTO-ZOOM CANVAS PLOTTER)
+           ------------------------------------------------------------- */
+        const canvas = document.getElementById('trendCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            // Manage internal resolution to match container sizes
+            canvas.width = canvas.parentElement.clientWidth * window.devicePixelRatio;
+            canvas.height = 155 * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawTrend() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // AUTO-ZOOM CALCULATION
+            // Find historical min and max to auto-scale the Y-axis
+            const levels = SimState.history.map(pt => pt.level);
+            let minLevel = Math.min(...levels);
+            let maxLevel = Math.max(...levels);
+            let levelRange = maxLevel - minLevel;
+
+            // Robust safety margin fallbacks for auto-scale if history is small or perfectly flat
+            if (isNaN(minLevel) || isNaN(maxLevel) || levelRange < 1.0) {
+                minLevel = Math.max(0, SimState.currentLevel - 10);
+                maxLevel = SimState.currentLevel + 10;
+                levelRange = maxLevel - minLevel;
+            } else {
+                // Add a comfortable 15% padding top/bottom so lines never touch the outer canvas borders
+                const padding = levelRange * 0.15;
+                minLevel = Math.max(0, minLevel - padding);
+                maxLevel = maxLevel + padding;
+                levelRange = maxLevel - minLevel;
+            }
+
+            // Draw Clean Dynamic Grids & Dynamic Labels (Low, Mid, High)
+            ctx.strokeStyle = '#172234';
+            ctx.lineWidth = 0.5;
+            
+            const gridValues = [minLevel, (minLevel + maxLevel) / 2, maxLevel];
+            gridValues.forEach(val => {
+                const y = h - ((val - minLevel) / levelRange) * h;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+
+                // Dynamically scaled Y axis labels
+                ctx.fillStyle = '#8C9BAE';
+                ctx.font = '9px monospace';
+                // Adjust text alignment if it goes out of canvas bounds
+                const textY = y > h - 12 ? y - 4 : y + 10;
+                ctx.fillText(`${val.toFixed(1)} mm`, 5, textY);
+            });
+
+            // Draw Nominal Operating Level (250 mm) marker *ONLY* if it fits in the current zoomed window
+            if (Constants.nominalLevel >= minLevel && Constants.nominalLevel <= maxLevel) {
+                const nomY = h - ((Constants.nominalLevel - minLevel) / levelRange) * h;
+                ctx.strokeStyle = 'rgba(0, 230, 118, 0.45)';
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(0, nomY);
+                ctx.lineTo(w, nomY);
+                ctx.stroke();
+                ctx.setLineDash([]); // Reset dashed lines
+
+                ctx.fillStyle = '#00E676';
+                ctx.font = 'bold 8px sans-serif';
+                ctx.fillText("--- 250mm NOMINAL OPERATING LEVEL ---", w / 4, nomY - 4);
+            }
+
+            if (SimState.history.length < 2) return;
+
+            // Draw level trend line (Dynamic Auto-Scaled Blue line)
+            ctx.strokeStyle = '#00B0FF';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            
+            for (let i = 0; i < SimState.history.length; i++) {
+                const pt = SimState.history[i];
+                const x = (w / (MAX_HISTORY_POINTS - 1)) * i;
+                const y = h - ((pt.level - minLevel) / levelRange) * h;
+                
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw Inflow trend line (Green line) - scaled to fit flow bounds (0-20 m3/h)
+            ctx.strokeStyle = 'rgba(0, 230, 118, 0.6)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < SimState.history.length; i++) {
+                const pt = SimState.history[i];
+                const x = (w / (MAX_HISTORY_POINTS - 1)) * i;
+                // Scale flow: 0 to 20 m³/h max visible scale
+                const y = h - (pt.inflow / 20.0) * h;
+                
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // Store dynamic data point to history scrolling array
+        function recordHistory() {
+            SimState.history.push({
+                level: SimState.currentLevel,
+                inflow: SimState.flowTotalInflow,
+                outflow: SimState.flowTotalOutflow
+            });
+
+            if (SimState.history.length > MAX_HISTORY_POINTS) {
+                SimState.history.shift(); // Evict oldest point to scroll
+            }
+        }
+
+        /* -------------------------------------------------------------
+           AUXILIARY USER-INTERFACE NOTIFICATIONS
+           ------------------------------------------------------------- */
+        function showFlashMessage(text, type = "info") {
+            const colors = {
+                success: "border-[#00E676] text-[#00E676] bg-green-950/80",
+                error: "border-red-500 text-red-500 bg-red-950/80",
+                info: "border-[#00B0FF] text-[#00B0FF] bg-slate-950/80"
+            };
+
+            const div = document.createElement('div');
+            div.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 px-4 py-2.5 rounded-lg border text-xs font-bold ${colors[type]} shadow-2xl z-50 flex items-center gap-2 animate-bounce`;
+            div.innerHTML = `<i class="fa-solid fa-bell"></i> ${text}`;
+            
+            document.body.appendChild(div);
+            
+            setTimeout(() => {
+                div.remove();
+            }, 3000);
+        }
+
+        function updateSysTime() {
+            const now = new Date();
+            const timeStr = now.toISOString().replace('T', ' ').substr(0, 19);
+            document.getElementById('timestamp').innerText = `SYS-TIME: ${timeStr} GMT+7`;
+        }
+
+        /* -------------------------------------------------------------
+           CORE LOOPS RUNNING TRIGGERS
+           ------------------------------------------------------------- */
+        window.onload = function() {
+            // Apply steady-state baseline parameters first
+            applyPreset('steady');
+            resizeCanvas();
+
+            // Run Physics math at high speed (100ms interval / 10Hz)
+            setInterval(() => {
+                computeDynamicStep();
+                updateGraphicUI();
+                updateDCSDisplays();
+            }, 100);
+
+            // Record History and re-draw scrolling trend charts at 1Hz (1000ms)
+            setInterval(() => {
+                recordHistory();
+                drawTrend();
+                updateSysTime();
+            }, 1000);
+
+            showFlashMessage("GEG-4 COOSE SIMULATOR ONLINE - AUTO-ZOOM ACTIVE", "success");
+        };
+    </script>
+</body>
+</html>
